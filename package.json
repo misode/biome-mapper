@@ -1,0 +1,9 @@
+{
+  "name": "biome-mapper",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "@webmc/nbt": "^0.2.4",
+    "fast-glob": "^3.2.7"
+  }
+}
