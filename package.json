@@ -3,7 +3,7 @@
   "private": true,
   "main": "index.js",
   "dependencies": {
-    "@webmc/nbt": "^0.2.4",
+    "deepslate": "^0.10.1",
     "fast-glob": "^3.2.7"
   }
 }

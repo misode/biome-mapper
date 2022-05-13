@@ -1,18 +1,49 @@
-const { getOptional, getTag, readChunk, readRegion, writeChunk, writeRegion } = require('@webmc/nbt')
+const { getOptional, getTag, loadChunk, readRegion, saveChunk, writeRegion, getListTag} = require('deepslate')
 const fg = require('fast-glob')
 const fs = require('fs')
 
-function processChunk(chunks, chunk) {
-	const root = readChunk(chunks, chunk.x, chunk.z).nbt
-	const level = getTag(root.value, 'Level', 'compound')
-	const biomes = getOptional(() => getTag(level, 'Biomes', 'intArray'), undefined)
+function convertBiomeNum(id) {
+	return id >= 174 ? id + 2 : id
+}
 
-	if (biomes) {
-		const newBiomes = biomes?.map(b => b >= 174 ? b + 2 : b)
-		level['Biomes'].value = newBiomes
-		
-		dirty = true
-		writeChunk(chunks, chunk.x, chunk.z, root)
+function convertBiomeStr(id) {
+	if (id === 'minecraft:plains') {
+		return 'minecraft:desert'
+	}
+	return id
+}
+
+function processChunk(chunk) {
+	const root = loadChunk(chunk).nbt
+	const dataVersion = getTag(root.value, 'DataVersion', 'int')
+	if (dataVersion >= 2836) {
+		const sections = getListTag(root.value, 'sections', 'compound')
+		let dirtySection = false
+		for (const section of sections) {
+			const biomes = getOptional(() => getTag(section, 'biomes', 'compound'), undefined)
+			if (biomes) {
+				const palette = getListTag(biomes, 'palette', 'string')
+				const newPalette = palette.map(convertBiomeStr)
+				biomes['palette'].value = {
+					type: 'string',
+					value: newPalette
+				}
+				dirtySection = true
+			}
+		}
+		if (dirtySection) {
+			dirty = true
+			saveChunk(chunk)
+		}
+	} else {
+		const level = getTag(root.value, 'Level', 'compound')
+		const biomes = getOptional(() => getTag(level, 'Biomes', 'intArray'), undefined)
+		if (biomes) {
+			const newBiomes = biomes.map(convertBiomeNum)
+			level['Biomes'].value = newBiomes
+			dirty = true
+			saveChunk(chunk)
+		}
 	}
 	return true
 }
@@ -22,7 +53,7 @@ function convertRegion(regionFile) {
 
 	let dirty = false
 	chunks.forEach(chunk => {
-		if (processChunk(chunks, chunk)) {
+		if (processChunk(chunk)) {
 			dirty = true
 		}
 	})
