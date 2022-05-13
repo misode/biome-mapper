@@ -6,7 +6,7 @@ function convertBiomeNum(id) {
 	return id >= 174 ? id + 2 : id
 }
 
-function convertBiomeStr(id) {
+function convertBiomeStr(id, chunkX, chunkZ, sectionY) {
 	if (id === 'minecraft:plains') {
 		return 'minecraft:desert'
 	}
@@ -17,13 +17,16 @@ function processChunk(chunk) {
 	const root = loadChunk(chunk).nbt
 	const dataVersion = getTag(root.value, 'DataVersion', 'int')
 	if (dataVersion >= 2836) {
+		const chunkX = getTag(root.value, 'xPos', 'int')
+		const chunkZ = getTag(root.value, 'zPos', 'int')
 		const sections = getListTag(root.value, 'sections', 'compound')
 		let dirtySection = false
 		for (const section of sections) {
+			const sectionY = getTag(section, 'Y', 'byte')
 			const biomes = getOptional(() => getTag(section, 'biomes', 'compound'), undefined)
 			if (biomes) {
 				const palette = getListTag(biomes, 'palette', 'string')
-				const newPalette = palette.map(convertBiomeStr)
+				const newPalette = palette.map(id => convertBiomeStr(id, chunkX, chunkZ, sectionY))
 				biomes['palette'].value = {
 					type: 'string',
 					value: newPalette
